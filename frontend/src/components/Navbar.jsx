@@ -4,16 +4,21 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../config/axiosInstance";
 import AuthContext from "../context/AuthContext";
+import { useEffect } from "react";
  
 export default function Navbar() {
   const [navbarOpen, setNavbarOpen] = useState(false);
   const navigate = useNavigate();
 
-  let { isAuthenticated, setAuth } = useContext(AuthContext);
+  let { isAuthenticated, setAuth, role } = useContext(AuthContext);
 
   const openNavbar = () => {
     setNavbarOpen(!navbarOpen);
   };
+
+  useEffect(() => {
+
+  }, [isAuthenticated])
 
   const authClickHandler = async () => {
     if (isAuthenticated) {
@@ -39,7 +44,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-[#fda63a] z-[1000] border-gray-200 dark:bg-gray-900 fixed top-0 shadow-lg w-full">
+    <nav className={`${role === "admin" && "hidden"} bg-[#fda63a] z-[1000] border-gray-200 dark:bg-gray-900 fixed top-0 shadow-lg w-full`}>
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto py-4 px-8">
         <Link to="/" className="flex items-center">
           <img src="./icons/logo.svg" className="h-8 mr-3" alt="Logo" />

@@ -15,7 +15,7 @@ export default function Login(props) {
 
     try {
       const res = await axios.post("auth/login", {
-        phone,
+        username: phone,      //change it to phone
         password,
       });
       if (res.data) {

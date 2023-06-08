@@ -3,9 +3,21 @@ import HeadingCard from "../components/HeadingCard";
 import SpecialitiesCards from "../components/SpecialitiesCards";
 import HireCards from "../components/HireCards";
 import BookingForm from "../components/BookingForm";
-// import Map from "@/components/Map";
+import { useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import AuthContext from "../context/AuthContext";
+
 
 export default function Home() {
+  const navigate = useNavigate();
+  const { role } = useContext(AuthContext);
+  
+  useEffect(() => {
+    if (role === "admin") {
+      navigate("/admin/dashboard");
+    }
+  }, []);
+
   return (
     <Layout>
       <div className="flex flex-col gap-6 w-full h-full">
