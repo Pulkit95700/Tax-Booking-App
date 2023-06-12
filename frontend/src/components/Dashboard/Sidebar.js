@@ -25,7 +25,7 @@ const Sidebar = () => {
         <ul className="space-y-2">
           <li>
             <NavLink
-              to="/admin/dashboard"
+              to="/admin"
               className={({ isActive }) =>
                 isActive
                   ? "text-[#fad77e] flex items-center gap-2 space-x-2 text-sm font-semibold p-2 rounded-lg"
@@ -78,7 +78,7 @@ const Sidebar = () => {
           </li>
         </ul>
       </div>
-      <div className="mt-14 px-2 flex flex-col gap-2">
+      {/* <div className="mt-14 px-2 flex flex-col gap-2">
         <p className="ml-2 text-sm font-semibold text-lime-700">Reports</p>
         <ul className="space-y-2">
           <li>
@@ -121,7 +121,7 @@ const Sidebar = () => {
             </NavLink>
           </li>
         </ul>
-      </div>
+      </div> */}
 
       <div className="mt-14 px-2 flex flex-col gap-2">{/* <hr></hr> */}</div>
     </div>

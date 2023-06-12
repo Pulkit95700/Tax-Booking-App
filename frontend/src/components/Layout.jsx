@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
 import React from "react";
+import { Link } from "react-router-dom";
+import LogoImg from "../assets/icons/logo.svg";
+
 
 export default function Layout({ children, className }) {
   return (
@@ -16,7 +18,7 @@ export default function Layout({ children, className }) {
               <img
                 height={32}
                 width={45}
-                src="./icons/logo.svg"
+                src={LogoImg}
                 className="h-8 mr-3"
                 alt="Logo"
               />

@@ -1,5 +1,4 @@
 import React, { useEffect, useContext } from "react";
-import Home from "./pages/Home";
 import {
   BrowserRouter,
   Routes,
@@ -7,53 +6,153 @@ import {
   Navigate,
   useNavigate,
 } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Auth from "./pages/Auth";
-import Bookings from "./pages/Bookings";
-import Admin from "./pages/Admin";
-import PrivateRoute from "./PrivateRoute";
-import AuthContext from "./context/AuthContext";
-import Dashboard from "./components/Dashboard/Dashboard";
-import Booking from "./components/Dashboard/Bookings";
-import Customers from "./components/Dashboard/Customers";
-import Drivers from "./components/Dashboard/Drivers";
-import Reviews from "./components/Dashboard/Reviews";
-import Transactions from "./components/Dashboard/Transactions";
-import Report from "./components/Dashboard/Report";
 
+import PublicRoute from "./components/Routes/PublicRoutes";
+import Home from "./pages/Home";
+import Auth from "./pages/Auth";
+import DriverRoute from "./components/Routes/DriverRoute";
+import DriverLandingPage from "./components/DriverComponents/DriverProfilePage";
+import DriverAvailabilityPage from "./components/DriverComponents/DriverAvailabilityPage";
+import DriverOngoingPage from "./components/DriverComponents/DriverOngoingPage";
+import DriverBookingsPage from "./components/DriverComponents/DriverBookingsPage";
+import Drivers from "./components/Dashboard/Drivers";
+import Dashboard from "./components/Dashboard/Dashboard";
+import Customers from "./components/Dashboard/Customers";
+import AdminRoute from "./components/Routes/AdminRoute";
+import CustomerRoute from "./components/Routes/CustomerRoute";
+import CustomerProfile from "./components/CustomerComponents/CustomerProfile";
+import CustomerBookings from "./components/CustomerComponents/CustomerBookings";
+import CustomerOngoing from "./components/CustomerComponents/CustomerOngoing";
+import CustomerBookride from "./components/CustomerComponents/CustomerBookride";
+import Bookings from "./components/Dashboard/Bookings";
+import { useSelector, useDispatch } from "react-redux";
+import { login } from "./store/authSlice";
+import DriverProfilePage from "./components/DriverComponents/DriverProfilePage";
 
 const App = () => {
-  let { isAuthenticated, role } = useContext(AuthContext);
+  // let { isAuthenticated } = useContext(AuthContext);
+  const dispatch = useDispatch();
+
 
   return (
     <BrowserRouter>
-      <Navbar />
       <Routes>
-        <Route path="/admin" element={<Admin />}>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="drivers" element={<Drivers />} />
-          <Route path="bookings" element={<Booking />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="reviews" element={<Reviews />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="reports" element={<Report />} />
-        </Route>
-        <Route path="/user" element={<Bookings />} />
-
-        <Route path="/" element={<Home />} />
-
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <Home />
+            </PublicRoute>
+          }
+        />
         <Route
           path="/auth"
           element={
-            isAuthenticated ? (
-              role === "admin" ? (
-                <Navigate to="/dashboard" />
-              ) : (
-                <Navigate to="/user" />
-              )
-            ) : (
+            <PublicRoute>
               <Auth />
-            )
+            </PublicRoute>
+          }
+        />
+
+        <Route
+          path="/driver"
+          element={
+            <DriverRoute>
+              <DriverProfilePage />
+            </DriverRoute>
+          }
+        />
+        <Route
+          path="/driver/availability"
+          element={
+            <DriverRoute>
+              <DriverAvailabilityPage />
+            </DriverRoute>
+          }
+        />
+        <Route
+          path="/driver/bookings"
+          element={
+            <DriverRoute>
+              <DriverBookingsPage />
+            </DriverRoute>
+          }
+        />
+        <Route
+          path="/driver/ongoing"
+          element={
+            <DriverRoute>
+              <DriverOngoingPage />
+            </DriverRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Dashboard />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/drivers"
+          element={
+            <AdminRoute>
+              <Drivers />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/bookings"
+          element={
+            <AdminRoute>
+              <Bookings />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/customers"
+          element={
+            <AdminRoute>
+              <Customers />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/customer"
+          element={
+            <CustomerRoute>
+              <CustomerProfile />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/bookings"
+          element={
+            <CustomerRoute>
+              <CustomerBookings />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/ongoing"
+          element={
+            <CustomerRoute>
+              <CustomerOngoing />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/customer/bookride"
+          element={
+            <CustomerRoute>
+              <CustomerBookride />
+            </CustomerRoute>
           }
         />
       </Routes>

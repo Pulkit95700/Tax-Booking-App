@@ -3,18 +3,28 @@ import HeadingCard from "../components/HeadingCard";
 import SpecialitiesCards from "../components/SpecialitiesCards";
 import HireCards from "../components/HireCards";
 import BookingForm from "../components/BookingForm";
-import { useEffect, useContext } from "react";
+import { useDispatch } from "react-redux";
+import { login } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
-import AuthContext from "../context/AuthContext";
-
+import { useEffect } from "react";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { role } = useContext(AuthContext);
-  
+  // const { role } = useContext(AuthContext);
+
+  // useEffect(() => {
+  //   if (role === "admin") {
+  //     navigate("/admin/dashboard");
+  //   }
+  // }, []);
+
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    if (role === "admin") {
-      navigate("/admin/dashboard");
+    let user = localStorage.getItem("user");
+    if (user) {
+      dispatch(login(JSON.parse(user)));
+      navigate("/" + JSON.parse(user).role);
     }
   }, []);
 

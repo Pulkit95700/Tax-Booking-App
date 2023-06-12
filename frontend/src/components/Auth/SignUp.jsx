@@ -1,8 +1,22 @@
-import axios from "axios";
 import React, { useState } from "react";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
 import { useNavigate } from "react-router-dom";
+import { signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+import { auth, db } from "../../firebase/config.js";
+import * as Yup from "yup";
+import ResponseAlert from "../Alerts/ResponseAlert.js";
+import { useSelector, useDispatch } from "react-redux";
+import { login } from "../../store/authSlice.js";
+import { hashPassword } from "../../helpers/bcrypt.js";
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 const Alert = React.forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -13,51 +27,174 @@ export default function SignUp(props) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [error, setError] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [recaptchaVerified, setRecaptchaVerified] = useState(false);
+  const [errorValue, setErrorValue] = useState("");
+  const [errorStatus, setErrorStatus] = useState("");
+  const [openResponse, setOpenResponse] = useState(false);
+
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const signUpHandler = async (e) => {
+  const onCaptchVerify = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        "recaptcha-container",
+        {
+          size: "normal",
+          callback: (response) => {
+            // reCAPTCHA solved, allow signInWithPhoneNumber.
+            // ...
+            setRecaptchaVerified(true);
+          },
+          "expired-callback": () => {
+            // Response expired. Ask user to solve reCAPTCHA again.
+            // ...
+            setRecaptchaVerified(false);
+          },
+        },
+        auth
+      );
+    }
+  };
+
+  function sendOtpHandler(e) {
     e.preventDefault();
-
-    if (password !== confirmPassword) {
-      alert("Passwords do not match");
+    if (isButtonDisabled) {
       return;
     }
+    setOtpLoading(true);
+    onCaptchVerify();
 
-    try {
-      const res = await axios.post("auth/register", {
-        name,
-        phone,
-        password,
+    const appVerifier = window.recaptchaVerifier;
+    signInWithPhoneNumber(auth, "+91" + phone, appVerifier)
+      .then((confirmationResult) => {
+        // SMS sent. Prompt user to type the code from the message, then sign the
+        // user in with confirmationResult.confirm(code).
+        window.confirmationResult = confirmationResult;
+        setShowOtpInput(true);
+        setOtpLoading(false);
+        setErrorStatus(false);
+        setErrorValue("OTP sent successfully");
+        setOpenResponse(true);
+
+        console.log(confirmationResult);
+        setTimeout(() => {
+          setOpenResponse(false);
+        }, 3000);
+        // ...
+      })
+      .catch((error) => {
+        // Error; SMS not sent
+        // ...
+        setErrorStatus(true);
+        setErrorValue("Invalid Phone No");
+        setOpenResponse(true);
+
+        setTimeout(() => {
+          setOpenResponse(false);
+        }, 3000);
       });
+  }
 
-      if (res.status >= 200 && res.status < 300) {
-        localStorage.setItem("accessToken", res.data.accessToken);
-        localStorage.setItem("refreshToken", res.data.refreshToken);
-        localStorage.setItem("name", res.data.name);
-        localStorage.setItem("role", res.data.role);
+  function verifyOtpHandler(e) {
+    e.preventDefault();
+    window.confirmationResult
+      .confirm(otpInput)
+      .then((result) => {
+        // User signed in successfully.
+        const user = result.user;
+        console.log(user);
 
-        if (res.data.role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+        // logging the user or driver in
+        onSignInHandler(user.uid);
+        // ...
+      })
+      .catch((error) => {
+        console.log(error);
+        setErrorStatus(true);
+        setErrorValue("Invalid OTP");
+        setOpenResponse(true);
 
-        setOpenSnackbar(true);
-      } else {
-        setError(true);
-        setOpenSnackbar(true);
-      }
-    } catch (err) {
-      setError(true);
-      setOpenSnackbar(true);
+        setTimeout(() => {
+          setOpenResponse(false);
+        }, 3000);
+      });
+  }
+
+  const isButtonDisabled =
+    password === "" ||
+    phone === "" ||
+    confirmPassword === "" ||
+    otpLoading ||
+    password !== confirmPassword ||
+    name === "";
+
+  const onSignInHandler = async (authenticationUid) => {
+    const q = query(
+      collection(db, "users"),
+      where("authenticationUid", "==", authenticationUid)
+    );
+
+    let user = null;
+    const querySnapshot = await getDocs(q);
+
+    querySnapshot.forEach((doc) => {
+      user = doc.data();
+    });
+
+    if (user) {
+      setErrorStatus(true);
+      setErrorValue("User already exists");
+      setOpenResponse(true);
+
+      setTimeout(() => {
+        setOpenResponse(false);
+      }, 3000);
+    } else {
+      const hashedPassword = await hashPassword(password);
+
+      const newUser = {
+        Name: name,
+        PhoneNo: phone,
+        authenticationUid: authenticationUid,
+        password: hashedPassword,
+        TotalBookings: [],
+        AvailableBookings: [],
+        City: "",
+        role: {
+          isAdmin: false,
+          isDriver: false,
+          isCustomer: true,
+        },
+      };
+
+      await setDoc(doc(db, "users", phone), newUser);
+
+      dispatch(
+        login({
+          uid: newUser.authenticationUid,
+          name: newUser.Name,
+          role: "customer",
+          city: newUser.City,
+        })
+      );
+
+      navigate("/customer");
     }
   };
 
   return (
     <>
-      <form onClick={signUpHandler}>
+      <ResponseAlert
+        errorValue={errorValue}
+        openResponse={openResponse}
+        setOpenResponse={setOpenResponse}
+        errorStatus={errorStatus}
+      />
+      <form>
         <div className="mb-6">
           <label
             htmlFor="name"
@@ -88,7 +225,7 @@ export default function SignUp(props) {
             onChange={(e) => setPhone(e.target.value)}
             value={phone}
             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            placeholder="+1 (555) 1234-567"
+            placeholder="9876543210"
             required
           />
         </div>
@@ -124,43 +261,54 @@ export default function SignUp(props) {
             required
           />
         </div>
-        {/* <div className="flex items-start mb-6">
-        <div className="flex items-center h-5">
-          <input
-            id="remember"
-            type="checkbox"
-            value=""
-            className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800"
-            required
-          />
-        </div>
-        <label
-          htmlFor="remember"
-          className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-        >
-          Remember me
-        </label>
-      </div> */}
-        <button
-          type="submit"
-          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-        >
-          Submit
-        </button>
+        {showOtpInput && (
+          <div className="mb-6 flex flex-col">
+            <label
+              htmlFor="otp"
+              className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+            >
+              OTP
+            </label>
+            <input
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              type="text"
+              id="otp"
+              maxLength="6"
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              placeholder="Your OTP here"
+              required
+            />
+          </div>
+        )}
+        <div
+          id="recaptcha-container"
+          className={`${showOtpInput && "hidden"} mb-4`}
+        ></div>
+        {!showOtpInput ? (
+          <button
+            type="button"
+            className={`${
+              isButtonDisabled
+                ? "bg-gray-100 text-gray-400"
+                : "bg-blue-700  hover:bg-blue-800  dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800  text-white"
+            } cursor-pointer  focus:ring-4 w-full self-center focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center`}
+            onClick={sendOtpHandler}
+            disabled={isButtonDisabled}
+          >
+            Send OTP
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="text-white bg-blue-700  hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-32 sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            onClick={verifyOtpHandler}
+            // verifyOtpHandler will be called here
+          >
+            Submit
+          </button>
+        )}
       </form>
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={2000}
-        onClose={() => setOpenSnackbar(false)}
-      >
-        <Alert
-          onClose={() => setOpenSnackbar(false)}
-          severity={error ? "error" : "success"}
-          sx={{ width: "100%" }}
-        >
-          {error ? "Sign up failed" : "SignUp successfull"}
-        </Alert>
-      </Snackbar>
     </>
   );
 }
